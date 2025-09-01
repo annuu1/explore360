@@ -23,3 +23,5 @@ export async function dbConnect() {
 }
 
 export { dbConnect as connectDB }
+
+export default dbConnect
