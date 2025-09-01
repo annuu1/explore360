@@ -1,22 +1,39 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { auth } from "@/lib/auth"
+import { getToken } from "next-auth/jwt"
 
 const PUBLIC_PATHS = ["/login", "/register", "/api/auth", "/"]
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next()
 
-  const session = await auth()
-  if (!session) return NextResponse.redirect(new URL("/login", req.url))
+  // allow public routes
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next()
+  }
 
-  if (pathname.startsWith("/admin") && session.user.role !== "admin") {
+  // ✅ use getToken instead of auth()
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+
+  if (!token) {
+    return NextResponse.redirect(new URL("/login", req.url))
+  }
+
+  // ✅ token contains user info if you add it in your NextAuth callbacks
+  if (pathname.startsWith("/admin") && token.user?.role !== "admin") {
     return NextResponse.redirect(new URL("/dashboard", req.url))
   }
+  
+
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/dashboard/:path*", "/test/:path*", "/profile/:path*", "/api/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/dashboard/:path*",
+    "/test/:path*",
+    "/profile/:path*",
+    "/api/:path*",
+  ],
 }
