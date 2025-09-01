@@ -12,11 +12,13 @@ declare module "next-auth" {
       email?: string | null
       image?: string | null
       role?: "student" | "admin"
+      active?: boolean //
     }
   }
 }
 declare module "next-auth/jwt" {
   interface JWT {
     role?: "student" | "admin"
+    active?: boolean //
   }
 }

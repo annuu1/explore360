@@ -1,6 +1,6 @@
 import NextAuth, { type DefaultSession } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import { compare } from "bcryptjs"
+import { compare, hash } from "bcryptjs"
 import { dbConnect } from "@/lib/db"
 import { UserModel } from "@/models/user"
 
@@ -11,10 +11,12 @@ declare module "next-auth" {
       role: "student" | "admin"
       email: string
       name?: string | null
+      active: boolean
     } & DefaultSession["user"]
   }
   interface User {
     role: "student" | "admin"
+    active: boolean
   }
 }
 
@@ -28,11 +30,33 @@ export const authOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
         await dbConnect()
-        const user = await UserModel.findOne({ email: credentials.email }).lean()
-        if (!user) return null
-        const ok = await compare(credentials.password, user.passwordHash)
+
+        const adminEmail = "admin@explore360.in"
+        const existingAdmin = await UserModel.findOne({ email: adminEmail })
+        if (!existingAdmin) {
+          await UserModel.create({
+            email: adminEmail,
+            name: "Admin",
+            passwordHash: await hash("admin", 10),
+            role: "admin",
+            active: true,
+          })
+        }
+
+        // authenticate user
+        const userDoc = await UserModel.findOne({ email: String(credentials.email).toLowerCase() }).lean()
+        if (!userDoc) return null
+        if (userDoc.active === false) return null
+        const ok = await compare(credentials.password, userDoc.passwordHash)
         if (!ok) return null
-        return { id: String(user._id), email: user.email, name: user.name, role: user.role }
+
+        return {
+          id: String(userDoc._id),
+          email: userDoc.email,
+          name: userDoc.name,
+          role: userDoc.role,
+          active: userDoc.active !== false,
+        } as any
       },
     }),
   ],
@@ -41,6 +65,7 @@ export const authOptions = {
       if (user) {
         token.role = user.role
         token.uid = user.id
+        token.active = user.active !== false // persist active flag
       }
       return token
     },
@@ -51,7 +76,8 @@ export const authOptions = {
           email: session.user?.email || "",
           name: session.user?.name,
           role: token.role,
-        }
+          active: token.active !== false, //
+        } as any
       }
       return session
     },

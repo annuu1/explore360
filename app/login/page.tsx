@@ -5,7 +5,6 @@ import type React from "react"
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -65,12 +64,7 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
-        <p className="text-sm">
-          New here?{" "}
-          <Link href="/register" className="underline">
-            Create an account
-          </Link>
-        </p>
+        <p className="text-sm text-muted-foreground">Accounts are created by the admin. Contact your administrator.</p>
       </div>
     </main>
   )

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "@/hooks/use-toast"
+import { Separator } from "@/components/ui/separator"
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -29,6 +30,8 @@ export default function AdminPage() {
   const [chapterName, setChapterName] = useState("")
 
   const [json, setJson] = useState("")
+  const { data: users, mutate: mUsers } = useSWR("/api/admin/users", fetcher)
+  const [newStudent, setNewStudent] = useState({ email: "", name: "", password: "" })
 
   const addClass = async () => {
     const res = await fetch("/api/admin/catalog/classes", {
@@ -78,6 +81,31 @@ export default function AdminPage() {
     } catch (e: any) {
       toast({ title: "Invalid JSON", description: String(e), variant: "destructive" })
     }
+  }
+
+  const addStudent = async () => {
+    const res = await fetch("/api/admin/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...newStudent }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setNewStudent({ email: "", name: "", password: "" })
+      mUsers()
+      toast({ title: "Student created" })
+    } else {
+      toast({ title: "Failed", description: data?.error || "Error", variant: "destructive" })
+    }
+  }
+
+  const toggleActive = async (id: string, active: boolean) => {
+    const res = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, active }),
+    })
+    if (res.ok) mUsers()
   }
 
   return (
@@ -151,6 +179,57 @@ export default function AdminPage() {
           </div>
           <div className="text-sm text-muted-foreground">
             Existing: {chapters?.map((ch: any) => ch.name).join(", ")}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Separator className="my-6" />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Manage Students</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 gap-2">
+            <Input
+              placeholder="Email"
+              value={newStudent.email}
+              onChange={(e) => setNewStudent((s) => ({ ...s, email: e.target.value }))}
+            />
+            <Input
+              placeholder="Name"
+              value={newStudent.name}
+              onChange={(e) => setNewStudent((s) => ({ ...s, name: e.target.value }))}
+            />
+            <Input
+              placeholder="Password"
+              type="password"
+              value={newStudent.password}
+              onChange={(e) => setNewStudent((s) => ({ ...s, password: e.target.value }))}
+            />
+            <Button onClick={addStudent} disabled={!newStudent.email || !newStudent.password}>
+              Add Student
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {(users || []).map((u: any) => (
+              <div key={u._id} className="flex items-center justify-between gap-2 rounded-md border p-2">
+                <div className="text-sm">
+                  <div className="font-medium">{u.name || "(no name)"}</div>
+                  <div className="text-muted-foreground">{u.email}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs">{u.role}</span>
+                  <Button
+                    size="sm"
+                    variant={u.active ? "secondary" : "default"}
+                    onClick={() => toggleActive(u._id, !u.active)}
+                  >
+                    {u.active ? "Deactivate" : "Activate"}
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

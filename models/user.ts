@@ -19,6 +19,7 @@ const UserSchema = new Schema(
     classId: { type: Schema.Types.ObjectId, ref: "Class" },
     subjectIds: [{ type: Schema.Types.ObjectId, ref: "Subject" }],
     completedChapters: [CompletedChapterSchema],
+    active: { type: Boolean, default: true, index: true }, // add active flag with default true
   },
   { timestamps: true },
 )
